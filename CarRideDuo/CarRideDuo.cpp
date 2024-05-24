@@ -1,4 +1,5 @@
-﻿#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <ctime>
 #include <Windows.h>
 #include <iostream>
@@ -9,11 +10,10 @@
 using namespace sf;
 using namespace std;
 
-// v1.0
+// v1.1 (добавлены звуки и музыка)
 
 // управление первого игрока на A и D
 // управление второго игрока на ← и →
-// нужно через NuGet подгрузить SFML
 // всё что нужно знать
 
 // самое важное что нужно реализовать, это сделать зависимость от время исполнения процессора чтобы время у всех примерно одинакого шло.
@@ -58,6 +58,18 @@ const string fileNameCar1 = "carPicture1.png";
 const string fileNameCar2 = "carPicture2.png";
 const string fileNameObstacle = "obstacle.png";
 const string fileNameCoin = "coin.png";
+const string fileNameBlastAudio = "blastAudio.wav";
+const string fileNameBackgroundMusic = "backgroundMusic.wav";
+const string fileNameCarMusic = "carAudio.wav";
+const string fileNameBonusAudio = "bonusAudio.wav";
+const string fileNameObstacleAudio = "obstacleAudio.wav";
+const string fileNameCarKickAudio = "carKick.wav";
+const string fileNameFastObstacleAudio = "fastObstacle.wav";
+const string fileNameExsaust1Audio = "exsaust1.wav";
+const string fileNameExsaust2Audio = "exsaust2.wav";
+const string fileNameExsaust3Audio = "exsaust3.wav";
+
+int wishExsaust = 1;
 
 void RefreshFileHighScores() {
     string highScore1 = to_string(highSCORE1);
@@ -182,8 +194,11 @@ void MoveCar(bool* keyboardORmouse, Sprite* carSprite1, RenderWindow* window) {
     }
 }
 
-bool CheckCollisionWithCar(Sprite *carSprite1, Sprite *carSprite2, bool firstORsecond) {
+bool CheckCollisionWithCar(Sprite *carSprite1, Sprite *carSprite2, Sound *carKickAudio, bool firstORsecond) {
     if(carSprite1->getGlobalBounds().intersects(carSprite2->getGlobalBounds())){
+        if (carKickAudio->getStatus() != Sound::Playing) {
+            carKickAudio->play();
+        }
         if (firstORsecond) {
             if (Keyboard::isKeyPressed(Keyboard::D) && carSprite1->getPosition().x < carSprite2->getPosition().x) {
                 carSprite2->move(0.5 * (carSPEED / 2), 0);
@@ -263,10 +278,11 @@ void DrawAll(Sprite* carSprite1, Sprite* carSprite2, Sprite obstacle[], Sprite* 
     window->display();
 }
 
-void CheckCollisionWithBall(Sprite* carSprite1, Sprite* carSprite2, Sprite obstacle[], Sprite* coinSprite, bool* CollisionObstacle, Text* scoreInt1, Text* solidText, Text* solidInt1, Text* scoreText, Text* highScoreText, Text* highScoreInt1, Text* gameOver, Text* scoreInt2, Text* highScoreInt2, Text* solidInt2, RenderWindow* window, int *i, Sprite *blastSprite) {
+void CheckCollisionWithBall(Sprite* carSprite1, Sprite* carSprite2, Sprite obstacle[], Sprite* coinSprite, bool* CollisionObstacle, Text* scoreInt1, Text* solidText, Text* solidInt1, Text* scoreText, Text* highScoreText, Text* highScoreInt1, Text* gameOver, Text* scoreInt2, Text* highScoreInt2, Text* solidInt2, RenderWindow* window, int *i, Sprite *blastSprite, Sound *blastAudio, Music *backgroundMusic, Sound *bonusAudio, Sound *obstacleAudio) {
     if (*i < BALLS) {
         if (obstacle[*i].getPosition().y >= HEIGHT - carHEIGHT && obstacle[*i].getPosition().y <= HEIGHT - obstacleDIAMETER) {
             if (carSprite1->getGlobalBounds().intersects(obstacle[*i].getGlobalBounds())){
+                obstacleAudio->play();
                 if (SCORE1 - 2 >= 0) {
                     SCORE1 -= 2;
                 }
@@ -279,20 +295,26 @@ void CheckCollisionWithBall(Sprite* carSprite1, Sprite* carSprite2, Sprite obsta
                     gameOver->setFillColor(Color::Magenta);
                     RefreshFileHighScores();
                     blastSprite->setPosition(carSprite1->getPosition().x, carSprite1->getPosition().y-carHEIGHT);
+                    blastAudio->play();
+                    backgroundMusic->setPitch(0.5);
                     while (blastSprite->getScale().x < 1.6 && blastSprite->getScale().y < 1.6) {
                         blastSprite->scale(1.11, 1.09);
                         blastSprite->move(-20, -20);
                         DrawAll(carSprite1, carSprite2, obstacle, coinSprite, CollisionObstacle, scoreInt1, solidText, solidInt1, scoreText, highScoreText, highScoreInt1, gameOver, scoreInt2, highScoreInt2, solidInt2, window, true, blastSprite);
                         Sleep(100);
                     }
-                    Sleep(1000);
-                    exit(0);
+                    blastAudio->stop();
+                    backgroundMusic->pause();
+                    backgroundMusic->stop();
+                    exit(0); 
                 }
+
                 DrawAll(carSprite1, carSprite2, obstacle, coinSprite, CollisionObstacle, scoreInt1, solidText, solidInt1, scoreText, highScoreText, highScoreInt1, gameOver, scoreInt2, highScoreInt2, solidInt2, window, false, blastSprite);
                 *CollisionObstacle = false;
                 obstacle[*i].setPosition(rand() % WIDE, rand() % 5);
             }
             else if (carSprite2->getGlobalBounds().intersects(obstacle[*i].getGlobalBounds())) {
+                obstacleAudio->play();
                 if (SCORE2 - 2 >= 0) {
                     SCORE2 -= 2;
                 }
@@ -305,15 +327,21 @@ void CheckCollisionWithBall(Sprite* carSprite1, Sprite* carSprite2, Sprite obsta
                     gameOver->setFillColor(Color::Cyan);
                     RefreshFileHighScores();
                     blastSprite->setPosition(carSprite2->getPosition().x, carSprite2->getPosition().y-carHEIGHT);
+                    blastAudio->play();
+                    backgroundMusic->setPitch(0.5);
                     while (blastSprite->getScale().x < 1.6 && blastSprite->getScale().y < 1.6) {
                         blastSprite->scale(1.11, 1.09);
                         blastSprite->move(-20, -20);
                         DrawAll(carSprite1, carSprite2, obstacle, coinSprite, CollisionObstacle, scoreInt1, solidText, solidInt1, scoreText, highScoreText, highScoreInt1, gameOver, scoreInt2, highScoreInt2, solidInt2, window, true, blastSprite);
                         Sleep(100);
                     }
-                    Sleep(1000);
+                    blastAudio->stop();
+                    backgroundMusic->pause();
+                    backgroundMusic->stop();
                     exit(0);
+
                 }
+               
                 DrawAll(carSprite1, carSprite2, obstacle, coinSprite, CollisionObstacle, scoreInt1, solidText, solidInt1, scoreText, highScoreText, highScoreInt1, gameOver, scoreInt2, highScoreInt2, solidInt2, window, false, blastSprite);
                 *CollisionObstacle = false;
                 obstacle[*i].setPosition(rand() % WIDE, rand() % 5);
@@ -324,6 +352,7 @@ void CheckCollisionWithBall(Sprite* carSprite1, Sprite* carSprite2, Sprite obsta
     else {
         if (coinSprite->getPosition().y >= HEIGHT - carHEIGHT && coinSprite->getPosition().y <= HEIGHT - coinDIAMETER) {
             if (carSprite1->getGlobalBounds().intersects(coinSprite->getGlobalBounds())) {
+                bonusAudio->play();
                 SCORE += 5;
                 if (SCORE1 >= highSCORE1) {
                     highSCORE1 = SCORE1;
@@ -335,6 +364,7 @@ void CheckCollisionWithBall(Sprite* carSprite1, Sprite* carSprite2, Sprite obsta
                 coinSprite->setPosition(rand() % WIDE, 0);
             }
             else if (carSprite2->getGlobalBounds().intersects(coinSprite->getGlobalBounds())) {
+                bonusAudio->play();
                 if (SCORE2 >= highSCORE2) {
                     highSCORE2 = SCORE2;
                     highScoreInt2->setString(to_string(highSCORE2));
@@ -589,6 +619,86 @@ int main()
     solidInt2.setPosition(WIDE - 200, 105);
     //--------------
 
+    //- звук конца игры (взрыва)
+    SoundBuffer blastAudioBuffer; 
+    blastAudioBuffer.loadFromFile(fileNameBlastAudio);
+    Sound blastAudio;
+    blastAudio.setBuffer(blastAudioBuffer);
+    blastAudio.setVolume(90);
+    //-----------
+
+    //- звук конца бонуса
+    SoundBuffer bonusAudioBuffer;
+    bonusAudioBuffer.loadFromFile(fileNameBonusAudio);
+    Sound bonusAudio;
+    bonusAudio.setBuffer(bonusAudioBuffer);
+    bonusAudio.setVolume(90);
+    //-----------
+    
+    //- звук конца препядствия
+    SoundBuffer obstacleAudioBuffer;
+    obstacleAudioBuffer.loadFromFile(fileNameObstacleAudio);
+    Sound obstacleAudio;
+    obstacleAudio.setBuffer(obstacleAudioBuffer);
+    obstacleAudio.setVolume(90);
+    //----------
+    
+    //- звук удара машины
+    SoundBuffer carKickAudioBuffer;
+    carKickAudioBuffer.loadFromFile(fileNameCarKickAudio);
+    Sound carKickAudio;
+    carKickAudio.setBuffer(carKickAudioBuffer);
+    carKickAudio.setVolume(90);
+    //----------
+    
+    //- звук быстрого препядствия
+    SoundBuffer fastObstacleAudioBuffer;
+    fastObstacleAudioBuffer.loadFromFile(fileNameFastObstacleAudio);
+    Sound fastObstacleAudio;
+    fastObstacleAudio.setBuffer(fastObstacleAudioBuffer);
+    fastObstacleAudio.setVolume(90);
+    //----------
+    
+    //- звук выхлопа1
+    SoundBuffer exsaust1AudioBuffer;
+    exsaust1AudioBuffer.loadFromFile(fileNameExsaust1Audio);
+    Sound exsaust1Audio;
+    exsaust1Audio.setBuffer(exsaust1AudioBuffer);
+    exsaust1Audio.setVolume(50);
+    //----------
+    
+    //- звук выхлопа2
+    SoundBuffer exsaust2AudioBuffer;
+    exsaust2AudioBuffer.loadFromFile(fileNameExsaust2Audio);
+    Sound exsaust2Audio;
+    exsaust2Audio.setBuffer(exsaust2AudioBuffer);
+    exsaust2Audio.setVolume(40);
+    //----------
+    
+    //- звук выхлопа3
+    SoundBuffer exsaust3AudioBuffer;
+    exsaust3AudioBuffer.loadFromFile(fileNameExsaust3Audio);
+    Sound exsaust3Audio;
+    exsaust3Audio.setBuffer(exsaust3AudioBuffer);
+    exsaust3Audio.setVolume(50);
+    //----------
+    
+    //- фоновая музыка
+    Music backgroundMusic;
+    backgroundMusic.openFromFile(fileNameBackgroundMusic);
+    backgroundMusic.setVolume(40);
+    backgroundMusic.setLoop(true);
+    backgroundMusic.play();
+
+    //- фоновый звук машины
+    Music carMusic;
+    carMusic.openFromFile(fileNameCarMusic);
+    carMusic.setVolume(20);
+    carMusic.setLoop(true);
+    carMusic.play();
+
+    exsaust1Audio.play();
+
     //игра
     while (window.isOpen() && !Keyboard::isKeyPressed(Keyboard::Q)) { // завершение игры по нажатию кнопки Q
         srand(time(0));
@@ -599,10 +709,34 @@ int main()
             }
         }
 
+        switch (wishExsaust)
+        {
+        case 1:
+            if (exsaust1Audio.getStatus() != Sound::Playing) {
+                exsaust1Audio.play();
+                wishExsaust++;
+            }
+            break;
+        case 2:
+            if (exsaust2Audio.getStatus() != Sound::Playing) {
+                exsaust2Audio.play();
+                wishExsaust++;
+            }
+            break;
+        case 3:
+            if (exsaust3Audio.getStatus() != Sound::Playing) {
+                exsaust3Audio.play();
+                wishExsaust = 1;
+            }
+            break;
+        default:
+            break;
+        }
+
         //цикл от 0 до количество BALLS + количество монеток (1)
         for (int i = 0; i < BALLS + 1; i++) {
             // обработчик столкновения препядствия
-            CheckCollisionWithBall(&carSprite1, &carSprite2, obstacle, &coinSprite, &CollisionObstacle, &scoreInt1, &solidText, &solidInt1, &scoreText, &highScoreText, &highScoreInt1, &gameOver, &scoreInt2, &highScoreInt2, &solidInt2, &window, &i, &blastSprite);
+            CheckCollisionWithBall(&carSprite1, &carSprite2, obstacle, &coinSprite, &CollisionObstacle, &scoreInt1, &solidText, &solidInt1, &scoreText, &highScoreText, &highScoreInt1, &gameOver, &scoreInt2, &highScoreInt2, &solidInt2, &window, &i, &blastSprite, &blastAudio, &backgroundMusic, &bonusAudio, &obstacleAudio);
             CollisionObstacle = true;
             scoreInt1.setString(to_string(SCORE1));
             scoreInt2.setString(to_string(SCORE2));
@@ -615,6 +749,7 @@ int main()
                 obstacle[i].move(0, obstacleSPEED + ((float)SCORE / 1000) + (rand() % 10) / 5);
                 obstacle[i].scale(obstacle[i].getScale().x+(rand() % 1 - 2) / 10, obstacle[i].getScale().y + (rand() % 1 - 2) / 10);
                 if ((0 + rand() % 4) - 1 == i) {
+                    fastObstacleAudio.play();
                     obstacle[i].move((rand() % 10) / 10, SlowedSPEED);
                 }
             }
@@ -629,11 +764,11 @@ int main()
         CheckCarCollisionWithFrame(&carSprite1);
         CheckCarCollisionWithFrame(&carSprite2);
         // управление машинкой и анимация поворота
-        if (CheckCollisionWithCar(&carSprite1, &carSprite2, true) && whoKickWho) {
+        if (CheckCollisionWithCar(&carSprite1, &carSprite2, &carKickAudio,  true) && whoKickWho) {
             MoveCar(&keyboardORmouse1, &carSprite1, &window);
             whoKickWho = false;
         }
-        if (CheckCollisionWithCar(&carSprite2, &carSprite1, false) && !whoKickWho) {
+        if (CheckCollisionWithCar(&carSprite2, &carSprite1, &carKickAudio, false) && !whoKickWho) {
             MoveCar(&keyboardORmouse2, &carSprite2, &window);
             whoKickWho = true;
         }
@@ -680,6 +815,13 @@ int main()
     window.close();
 
     RefreshFileHighScores();
+
+    fastObstacleAudio.stop();
+    backgroundMusic.stop();
+    carMusic.stop();
+    obstacleAudio.stop();
+    bonusAudio.stop();
+    carKickAudio.stop();
 
     std::cout << "Good Game!" << std::endl;
 
